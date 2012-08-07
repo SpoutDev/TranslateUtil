@@ -1,8 +1,5 @@
 package org.spout.translationutil;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.spout.api.lang.Locale;
 
 import com.beust.jcommander.IStringConverter;

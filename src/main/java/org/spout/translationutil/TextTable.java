@@ -41,6 +41,7 @@ public class TextTable {
 		System.out.println(delimiter);
 		System.out.println(getLine(header, widths));
 		System.out.println(delimiter);
+		// Print lines
 		for (Object cells[]:lines) {
 			System.out.println(getLine(cells, widths));
 		}		

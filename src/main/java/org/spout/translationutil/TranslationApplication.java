@@ -4,15 +4,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 
 import org.spout.api.exception.InvalidDescriptionFileException;
 import org.spout.api.lang.LanguageDictionary;
 import org.spout.api.lang.Locale;
 import org.spout.api.lang.PluginDictionary;
+import org.spout.api.lang.Translation;
 import org.spout.api.plugin.PluginDescriptionFile;
 
 import com.beust.jcommander.JCommander;
@@ -26,6 +31,8 @@ public class TranslationApplication {
 	@Parameter(names = {"--generate", "-g"}, description = "Comma-delimited list of locale files to generate/update", converter = LocaleListConverter.class)
 	private List<Locale> toGenerate = Collections.emptyList();
 	private static final String UNDONE_MARKUP = " <translate>";
+	private static Set<String> methods = new HashSet<String>();
+	
 	
 	private LinkedList<File> javaFiles = new LinkedList<File>();
 	private PluginDescriptionFile pdf;
@@ -34,16 +41,29 @@ public class TranslationApplication {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
 		TranslationApplication app = new TranslationApplication();
 		JCommander commands = new JCommander(app);
 		commands.parse(args);
 		
+		initMethods();
+		
 		app.initialize();
+	}
+	
+	private static void initMethods() {
+		for (Method m:Translation.class.getMethods()) {
+			if (Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers()) && !Modifier.isNative(m.getModifiers())) {
+				methods.add(m.getName());
+			}
+		}
 	}
 
 	protected void initialize() {
 		// INIT
+		File langDir = new File(resourceDirectory, "lang/");
+		if (!langDir.exists()) {
+			langDir.mkdirs();
+		}
 		try {
 			pdf = new PluginDescriptionFile(new FileInputStream(new File(resourceDirectory, "properties.yml")));
 		} catch (IOException e) {
@@ -134,8 +154,9 @@ public class TranslationApplication {
 		return classname;
 	}
 	
-	private static String BEGIN = "tr(\"";
+	private static String BEGIN = "(\"";
 	private static String END = "\",";
+	private static String ALTERNATIVE_END = ("\");");
 	
 	public static class Occurence {
 		public final int line;
@@ -149,26 +170,38 @@ public class TranslationApplication {
 		}
 	}
 	
+	private static final String STATIC_IMPORT = "import static "+Translation.class.getName()+".";
+	private static final String IMPORT = "import "+Translation.class.getName()+";";
+	
 	public static List<Occurence> search(File file) {
 		List<Occurence> results = new LinkedList<Occurence>();
+		Set<String> imported = new HashSet<String>();
 		try {
 			Scanner scanner = new Scanner(file);
 			int lineNum = 0;
+			boolean importedClass = false;
 			while (scanner.hasNextLine()) {
 				String line = scanner.nextLine();
+				
 				int next;
-				while ((next = line.indexOf(BEGIN)) != -1) {
-					line = line.substring(next + BEGIN.length());
-					
-					int end = line.indexOf(END);
-					
-					if (end == -1) { //TODO multiline strings
-						break;
+				next = line.indexOf(STATIC_IMPORT);
+				if (next != -1) {
+					String imp = line.substring(next + STATIC_IMPORT.length(), line.length());
+					imp = imp.substring(0, imp.indexOf(";"));
+					imported.add(imp);
+				}
+				if (line.startsWith(IMPORT)) {
+					importedClass = true;
+				}
+				for (String m:methods) {
+					String begin = m + BEGIN;
+					if (importedClass) {
+						searchLine(results, lineNum, line, "Translation."+begin);
 					}
-					String result = line.substring(0, end);
-					line = line.substring(end + END.length());
-					Occurence o = new Occurence(lineNum, next, result);
-					results.add(o);
+					if (imported.contains(m)) {
+						searchLine(results, lineNum, line, begin);
+					}
+					
 				}
 				lineNum ++;
 			}
@@ -177,6 +210,29 @@ public class TranslationApplication {
 			System.out.println("Could not read file: "+file+", because of this error: "+e.getMessage());
 		}
 		return results;
+	}
+
+	protected static void searchLine(List<Occurence> results, int lineNum,
+			String line, String begin) {
+		int next;
+		while ((next = line.indexOf(begin)) != -1) {
+			line = line.substring(next + begin.length());
+			
+			int end = line.indexOf(END);
+			String foundEnd = END;
+			if (end == -1) { //TODO multi-line strings
+				end = line.indexOf(ALTERNATIVE_END);
+				if (end == -1) {
+					break;
+				} else {
+					foundEnd = ALTERNATIVE_END;
+				}
+			}
+			String result = line.substring(0, end);
+			line = line.substring(end + foundEnd.length());
+			Occurence o = new Occurence(lineNum, next, result);
+			results.add(o);
+		}
 	}
 
 	public void searchJavaFiles(File baseDir) {

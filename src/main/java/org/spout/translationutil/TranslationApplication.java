@@ -24,8 +24,8 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
 public class TranslationApplication {
-	@Parameter(names = {"--source", "-s"}, description = "Directory of the source code.")
-	private File sourceDirectory;
+	@Parameter(names = {"--source", "-s"}, description = "Comma-delimited list of source directories.")
+	private List<File> sourceDirectories;
 	@Parameter(names = {"--resource", "-r"}, description = "Directory of the resources, where the lang/ folder and it's contents will be found.")
 	private File resourceDirectory;
 	@Parameter(names = {"--generate", "-g"}, description = "Comma-delimited list of locale files to generate/update", converter = LocaleListConverter.class)
@@ -34,7 +34,7 @@ public class TranslationApplication {
 	private static Set<String> methods = new HashSet<String>();
 	
 	
-	private LinkedList<File> javaFiles = new LinkedList<File>();
+	private LinkedList<SourceClass> javaFiles = new LinkedList<SourceClass>();
 	private PluginDescriptionFile pdf;
 	private MyPluginDictionary dictionary;
 	/**
@@ -77,7 +77,9 @@ public class TranslationApplication {
 		dictionary = new MyPluginDictionary(resourceDirectory);
 		
 		// SEARCH FOR JAVA CLASSES
-		searchJavaFiles(sourceDirectory);
+		for (File source:sourceDirectories) {
+			searchJavaFiles(source, source);
+		}
 
 		System.out.println("Found " + javaFiles.size() + " source file"
 				+ (javaFiles.size() != 1 ? "s" : "") + ".");
@@ -86,9 +88,9 @@ public class TranslationApplication {
 		int untranslated = 0;
 		int progress = 0;
 		int lastP = -1;
-		for (File file:javaFiles) {
-			List<Occurence> occurences = search(file);
-			String classname = getClassName(file, sourceDirectory);
+		for (SourceClass clazz:javaFiles) {
+			List<Occurence> occurences = search(clazz.getFile());
+			String classname = clazz.getClassName();
 			for (Occurence occurence : occurences) {
 				int key = dictionary.getKey(occurence.text, classname);
 				if (key == PluginDictionary.NO_ID) { // This is a new string
@@ -216,6 +218,10 @@ public class TranslationApplication {
 			String line, String begin) {
 		int next;
 		while ((next = line.indexOf(begin)) != -1) {
+			char before = line.charAt(next - 1); // Check if this isn't part of another method
+			if (Character.isLetter(before) || before == '.') {
+				continue;
+			}
 			line = line.substring(next + begin.length());
 			
 			int end = line.indexOf(END);
@@ -223,7 +229,7 @@ public class TranslationApplication {
 			if (end == -1) { //TODO multi-line strings
 				end = line.indexOf(ALTERNATIVE_END);
 				if (end == -1) {
-					break;
+					continue;
 				} else {
 					foundEnd = ALTERNATIVE_END;
 				}
@@ -234,16 +240,23 @@ public class TranslationApplication {
 			results.add(o);
 		}
 	}
+	
+//	public void skipWhitespace(Scanner scanner) {
+//		while (scanner.hasNext("\\s")) {
+//			scanner.next("\\s");
+//		}
+//	}
 
-	public void searchJavaFiles(File baseDir) {
+	public void searchJavaFiles(File baseDir, File persistentBaseDir) {
 		if (baseDir.isDirectory()) {
 			File[] files = baseDir.listFiles();
 			for (File file : files) {
 				if (file.getName().endsWith(".java")) {
-					javaFiles.add(file);
+					String className = getClassName(file, persistentBaseDir);
+					javaFiles.add(new SourceClass(file, className));
 				}
 				if (file.isDirectory()) {
-					searchJavaFiles(file);
+					searchJavaFiles(file, persistentBaseDir);
 				}
 			}
 		}

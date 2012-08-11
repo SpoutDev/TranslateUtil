@@ -16,6 +16,7 @@ import java.util.Set;
 import org.spout.api.exception.InvalidDescriptionFileException;
 import org.spout.api.lang.LanguageDictionary;
 import org.spout.api.lang.Locale;
+import org.spout.api.lang.LocaleNumberHandler;
 import org.spout.api.lang.PluginDictionary;
 import org.spout.api.lang.Translation;
 import org.spout.api.plugin.PluginDescriptionFile;
@@ -133,7 +134,18 @@ public class TranslationApplication {
 			for (int id:ids) {
 				String translation = ld.getTranslation(id);
 				if (translation == null) {
-					ld.setTranslation(id, dictionary.getCodedSource(id) + UNDONE_MARKUP);
+					String codedSource = dictionary.getCodedSource(id) + UNDONE_MARKUP;
+					if (codedSource.contains("%n")) {
+						try {
+							LocaleNumberHandler handler = locale.getNumberHandler().newInstance();
+							handler.init(codedSource);
+							ld.setTranslation(id, handler);
+						} catch (InstantiationException e) {
+						} catch (IllegalAccessException e) {
+						}
+					} else {
+						ld.setTranslation(id, codedSource);
+					}
 					changes ++;
 					undone ++;
 				} else if (translation.endsWith(UNDONE_MARKUP)) {

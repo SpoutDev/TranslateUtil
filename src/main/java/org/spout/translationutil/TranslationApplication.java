@@ -1,6 +1,5 @@
 package org.spout.translationutil;
 
-import japa.parser.ASTHelper;
 import japa.parser.JavaParser;
 import japa.parser.ParseException;
 import japa.parser.ast.CompilationUnit;
@@ -9,21 +8,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
 
 import org.spout.api.exception.InvalidDescriptionFileException;
 import org.spout.api.lang.LanguageDictionary;
 import org.spout.api.lang.Locale;
 import org.spout.api.lang.LocaleNumberHandler;
 import org.spout.api.lang.PluginDictionary;
-import org.spout.api.lang.Translation;
 import org.spout.api.plugin.PluginDescriptionFile;
 
 import com.beust.jcommander.JCommander;
@@ -162,6 +155,7 @@ public class TranslationApplication {
 		return classname;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public static List<Occurence> search(File file) {
 		List<Occurence> results = new LinkedList<Occurence>();
 		try {

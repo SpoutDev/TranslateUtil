@@ -13,10 +13,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.spout.api.exception.InvalidDescriptionFileException;
+import org.spout.api.lang.CommonPluginDictionary;
 import org.spout.api.lang.LanguageDictionary;
 import org.spout.api.lang.Locale;
 import org.spout.api.lang.LocaleNumberHandler;
-import org.spout.api.lang.PluginDictionary;
 import org.spout.api.plugin.PluginDescriptionFile;
 
 import com.beust.jcommander.JCommander;
@@ -81,7 +81,7 @@ public class TranslationApplication {
 			String classname = clazz.getClassName();
 			for (Occurence occurence : occurences) {
 				int key = dictionary.getKey(occurence.text, classname);
-				if (key == PluginDictionary.NO_ID) { // This is a new string
+				if (key == CommonPluginDictionary.NO_ID) { // This is a new string
 					System.out.println(classname + ":"+(occurence.line + 1)+": "+occurence.text);
 					key = dictionary.getNextKey();
 					dictionary.setKey(occurence.text, classname, key);

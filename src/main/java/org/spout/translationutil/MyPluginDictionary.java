@@ -5,9 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.spout.api.lang.PluginDictionary;
+import org.spout.api.lang.JavaPluginDictionary;
 
-public class MyPluginDictionary extends PluginDictionary {
+public class MyPluginDictionary extends JavaPluginDictionary {
 	File resourceDirectory;
 	
 	public MyPluginDictionary(File resourceDirectory) {
